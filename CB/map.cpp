@@ -35,7 +35,7 @@ Building** generate_building_map(int rows, int cols) {
 		arr[i] = new Building[cols];
 
 		for (int j = 0; j < cols; j++) {
-			arr[i][j] = Building(EMPTY, j, i, 0, 0);
+			arr[i][j] = Building(EMPTY, j, i);
 		}
 	}
 
@@ -64,9 +64,9 @@ void print_road_map(Road** map, int rows, int cols, int ox, int oy) {
 			int color = (int) map[i][j].color;
 			char chr = map[i][j].chr;
 
-			attron(COLOR_PAIR(color));
+			attron(COLOR_PAIR(color - 1));
 			mvprintw(i + oy, j + ox, "%c", chr);
-			attroff(COLOR_PAIR(color));
+			attroff(COLOR_PAIR(color - 1));
 		}
 	}
 }
@@ -80,11 +80,9 @@ void print_building_map(Building** map, int rows, int cols, int ox, int oy) {
 			int color = (int) map[i][j].color;
 			char chr = map[i][j].chr;
 
-			mvprintw(0, COLS + 1, "house color is: %d", color);
-
-			attron(COLOR_PAIR(color));
+			attron(COLOR_PAIR(color + 1));
 			mvprintw(i + oy, j + ox, "%c", chr);
-			attroff(COLOR_PAIR(color));
+			attroff(COLOR_PAIR(color + 1));
 		}
 	}
 }

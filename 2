@@ -1,0 +1,177 @@
+#ifndef DEFINES_H
+#define DEFINES_H
+
+#include <string.h>
+#include <iostream>
+#include <chrono>
+#include <thread>
+#include <conio.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+enum GameState {
+	MAP_VIEW,	// Print the map + cursor
+	BUILD_VIEW, // Print the build menu
+	PLACE_VIEW, // Print the place UI
+	REMOVE_VIEW,
+	GAME_STATE_COUNT
+};
+
+
+enum CharColor {
+	GREEN,	// Default residential color
+	PURPLE, // Default commercial color
+	YELLOW, // Default industrial color
+	WHITE,	// Default tile color
+	BLACK,
+	RED,
+	BLUE,
+	GRAY,
+	CHAR_COLOR_COUNT
+};
+
+enum TileType {
+	GRASS,
+	BUILDING,
+	ROAD,
+	TILE_TYPE_COUNT
+};
+
+class Tile {
+public:
+	virtual ~Tile() = default;
+	TileType type;
+	CharColor color;
+	int px, py; // Position of the entity
+	char chr; // Long character (with color) that reprensents the entity
+
+	Tile() : type(GRASS), color(WHITE), px(-1), py(-1), chr('.') {}
+	Tile(TileType type, CharColor color, int px, int py, char chr) {
+		this->type = type;
+		this->color = color;
+		this->px = px;
+		this->py = py;
+		this->chr = chr;
+	}
+};
+
+enum BuildingType {
+	RESIDENTIAL,
+	COMMERCIAL,
+	INDUSTRIAL,
+	BUILDING_TYPE_COUNT
+};
+
+class Building : public Tile {
+public:
+	BuildingType type;
+
+	int residents;
+	int max_residents;
+
+	Building(BuildingType type, int px, int py, int residents, int max_residents) 
+		: Tile(BUILDING, (CharColor)type, px, py, '@')
+	{
+		this->type = type;
+		this->residents = residents;
+		this->max_residents = max_residents;
+	}
+
+	// <summary>
+	// Returns true if the tile the player is attempting to place on is
+	// grass and it has atleast 1 road tiles around it's cardinal directions.
+	// Otherwise, return false.
+	// </summary>
+	bool get_valid_placement(Tile** map, int px, int py) {
+		if (!map[py][px].type == GRASS)
+			return false;
+
+		if (map[py + 1][px].type == ROAD) return true; // Up
+		if (map[py - 1][px].type == ROAD) return true; // Down
+		if (map[py][px - 1].type == ROAD) return true; // Left
+		if (map[py][px + 1].type == ROAD) return true; // Right
+
+		return false;
+	}
+};
+
+enum RoadDirection {
+	VERT,
+	HORZ,
+	CROSS,
+	UP_LEFT,
+	UP_RIGHT,
+	DOWN_LEFT,
+	DOWN_RIGHT,
+	RIGHT_UP,
+	RIGHT_DOWN,
+	LEFT_UP,
+	LEFT_DOWN,
+	ROAD_DIRECTION_COUNT
+};
+
+class Road : public Tile {
+public:
+	RoadDirection dir;
+
+	Road(Tile** map, int px, int py)
+		: Tile(ROAD, WHITE, px, py, '.')
+	{
+		update_road(map);
+	}
+
+	void update_road(Tile** map) {
+		bool up = false;
+		bool down = false;
+		bool left = false;
+		bool right = false;
+
+		if (map[py + 1][px].type == ROAD) up = true; // Up
+		if (map[py - 1][px].type == ROAD) down = true; // Down
+		if (map[py][px - 1].type == ROAD) left = true; // Left
+		if (map[py][px + 1].type == ROAD) right = true; // Right
+
+		if (up || down) dir = VERT;
+		if (left || right) dir = HORZ;
+
+		if (up && left && !(down || right)) {
+			// <-
+			//  |
+			dir = UP_LEFT;
+		}
+		else if (up && right && !(down || left)) {
+			// ->
+			// |
+			dir = UP_RIGHT;
+		}
+		else if (down && left && !(up || right)) {
+			//  |
+			// <-
+			dir = DOWN_LEFT;
+		} if (down && right && !(up || left)) {
+			// |
+			// ->
+			dir = DOWN_RIGHT;
+		}
+		else if (up && right && !(up || left)) {
+			// -^
+			dir = DOWN_RIGHT;
+		}
+
+		switch (dir) {
+			case VERT:
+				this->chr = '"';
+				break;
+
+			case HORZ:
+				this->chr = '=';
+				break;
+			
+			case CROSS:
+				this->chr = '+';
+				break;
+		}
+	}
+};
+
+#endif DEFINES_H

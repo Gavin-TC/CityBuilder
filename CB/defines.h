@@ -10,11 +10,28 @@
 
 #include "curses.h"
 
+enum Month {
+	JANUARY,
+	FEBUARY,
+	MARCH,
+	APRIL,
+	MAY,
+	JUNE,
+	JULY,
+	AUGUST,
+	SEPTEMBER,
+	OCTOBER,
+	NOVEMBER,
+	DECEMBER,
+	MONTH_COUNT
+};
+
 enum GameState {
 	MAP_VIEW,	// Print the map + cursor
 	BUILD_VIEW,	// Print the build menu
 	REMOVE_VIEW,// Print the remove menu
 	INFO_VIEW,  // Print info of tile under cursor
+	PAUSE_VIEW, // Prints pause menu and pauses game
 	GAME_STATE_COUNT
 };
 
@@ -60,6 +77,7 @@ enum BuildingType {
 	COMMERCIAL,
 	INDUSTRIAL,
 	EMPTY,
+	PARK, // Just adds happiness
 	BUILDING_TYPE_COUNT
 };
 
@@ -67,18 +85,25 @@ class Building : public Tile {
 public:
 	BuildingType type = RESIDENTIAL;
 
-	// Residents can mean workers in the context 
-	// of a commercial/industrial building
 	int residents = 0;
-	int max_residents = 0;
+	static const int max_residents = 20; // For a RESIDENTIAL building
 
-	int provided_jobs = 0;
-
-	int price = 0.0;
 	static const int residential_price = 20000;
 	static const int commercial_price = 45000;
 	static const int industrial_price = 60000;
+	static const int park_price = 10000;
 	static const int removal_price = 10000;
+
+	// Income on a monthly basis
+	static const int income_per_commercial_worker = 300; // $6,000/building max
+	static const int income_per_industrial_worker = 300; // $10,500/building max
+
+	int workers = 0;
+
+	static const int max_jobs_commercial = 20;
+	static const int max_jobs_industrial = 35;
+
+	static const int happiness_per_commercial_building = 5;
 
 	Building() {}
 	Building(BuildingType type, int px, int py) 
@@ -88,18 +113,15 @@ public:
 
 		if (type == RESIDENTIAL) {
 			this->chr = '^';
-			this->max_residents = 20;
-			this->price = residential_price;
 		}
 		if (type == COMMERCIAL) {
 			this->chr = 'o';
-			this->provided_jobs = 10;
-			this->price = commercial_price;
 		}
 		if (type == INDUSTRIAL) {
 			this->chr = 'L';
-			this->provided_jobs = 25;
-			this->price = industrial_price;
+		}
+		if (type == PARK) {
+			this->chr = '@';
 		}
 	}
 };
@@ -180,10 +202,12 @@ public:
 struct City {
 	Road** road_map;
 	Building** building_map;
+	int cols, rows;
 
 	int total_funds = 500000;
 
 	int total_residents = 0;
+	int max_residents = 0;
 
 	int total_buildings = 0;
 	int total_residential_buildings = 0;
@@ -193,11 +217,11 @@ struct City {
 
 	float happiness = 0.0; // average resident happiness; 0.0 -> 100.0
 
-	City(Road** road_map, Building** building_map, int total_funds) 
-		: road_map(road_map), building_map(building_map), total_funds(total_funds) {}
+	City(Road** road_map, Building** building_map, int total_funds, int cols, int rows) 
+		: road_map(road_map), building_map(building_map), total_funds(total_funds), cols(cols), rows(rows) {}
 
 	// Maybe for loading save?
-	City(Road** rm, Building** bm, int tf, int tr, int tb, int trb, int tcb, int tib, int tro, float h) {
+	City(Road** rm, Building** bm, int tf, int tr, int tb, int trb, int tcb, int tib, int tro, float h, int c, int r) {
 		road_map = rm;
 		building_map = bm;
 
@@ -212,11 +236,65 @@ struct City {
 		total_roads = tro;
 
 		happiness = h;
+
+		cols = c;
+		rows = r;
 	}
 
 	int get_total_buildings() {
 		return total_residential_buildings + total_commercial_buildings + total_industrial_buildings + total_roads;
 	}
+
+	int get_current_residents() {
+		int total = 0;
+
+		for (int i = 0; i < rows; i++) {
+			for (int j = 0; j < cols; j++) {
+				if (building_map[i][j].type == RESIDENTIAL) {
+					total += building_map[i][j].residents;
+				}
+			}
+		}
+		
+		return total;
+	}
+
+	int get_max_residents() {
+		return total_residential_buildings * Building::max_residents;
+	}
+
+	// Loop through every commercial/industrial building and do the mather
+	int get_commercial_monthly_funds() {
+		int total = 0;
+
+		for (int i = 0; i < rows; i++) {
+			for (int j = 0; j < cols; j++) {
+				if (building_map[i][j].type == COMMERCIAL) {
+					total += building_map[i][j].workers * Building::income_per_commercial_worker;
+				}
+			}
+		}
+
+		return total;
+	}
+
+	int get_industrial_monthly_funds() {
+		int total = 0;
+
+		for (int i = 0; i < rows; i++) {
+			for (int j = 0; j < cols; j++) {
+				if (building_map[i][j].type == INDUSTRIAL) {
+					total += building_map[i][j].workers * Building::income_per_industrial_worker;
+				}
+			}
+		}
+
+		return total;
+	}
+
+	int get_total_monthly_funds() {
+		return get_commercial_monthly_funds() + get_industrial_monthly_funds();
+	}
 };
 
-#endif DEFINES_H
+#endif DEFINES_Hindustrial_price
